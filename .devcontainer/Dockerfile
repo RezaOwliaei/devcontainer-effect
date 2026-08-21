@@ -1,15 +1,19 @@
 # Base: official Bun image, Debian (trixie) variant — has apt-get. Multi-arch
 # manifest: resolves natively to linux/arm64 on Apple Silicon, linux/amd64
-# elsewhere — no --platform override needed. Deliberately unpinned (`debian`,
-# not e.g. `1.4.0-debian`): this is a lab template meant to track Bun's
-# latest release, not a reproducible-build target. If a project built from
-# this template later needs a stable/reproducible base, pin the version
-# there, not here.
+# elsewhere — no --platform override needed. Pinned, not tracking `debian`
+# latest: 1.4.0 was tried unpinned here and reproducibly failed `bun install`
+# on this template's own dependency set with `error: Fail extracting tarball
+# for "effect"` (100% reproducible across repeated fresh-container runs,
+# consistent with Bun's known tarball/integrity-check flakiness under
+# Docker/overlayfs) — 1.3.14 does not have this problem, verified across
+# many fresh-container installs earlier in this template's development.
+# Re-verify before bumping past 1.3.14; don't unpin again for "latest Bun"
+# convenience without re-running that check.
 #
 # This is a genuinely minimal image: it does NOT include ca-certificates,
 # curl, or git by default (verified empirically, don't trust descriptions of
 # it) — all handled explicitly below.
-FROM oven/bun:debian
+FROM oven/bun:1.3.14-debian
 
 # node -> bun symlink so anything shelling out to `node` (npm-ecosystem CLIs
 # with a `#!/usr/bin/env node` shebang — oxlint-tsgolint, oxfmt, etc.) works
