@@ -74,13 +74,19 @@ just won't be attributed to you.
 
 devDependencies track the `latest` npm dist-tag, dependencies track `effect`
 at the `rc` tag (the 4.x prerelease line — `latest` on npm is still 3.x
-stable) — **with one pinned exception**: `oxlint` is pinned to `1.78.0`
-exactly, not `latest`. This isn't stale — `@effect/tsgo@0.36.5` only
-supports oxlint `1.77.0`/`1.78.0`; `oxlint@latest` (1.79.0 as of writing)
-fails `effect-tsgo patch` with `UnsupportedTargetPackageVersionError`. This
-was caught by actually running the scaffold end-to-end in a container, not
-assumed — re-verify against `@effect/tsgo`'s supported range before bumping
-it past 1.78.0.
+stable) — **with two pinned exceptions**:
+
+- `oxlint` is pinned to `1.78.0` exactly, not `latest`. This isn't stale —
+  `@effect/tsgo@0.36.5` only supports oxlint `1.77.0`/`1.78.0`;
+  `oxlint@latest` (1.79.0 as of writing) fails `effect-tsgo patch` with
+  `UnsupportedTargetPackageVersionError`. This was caught by actually
+  running the scaffold end-to-end in a container, not assumed — re-verify
+  against `@effect/tsgo`'s supported range before bumping it past 1.78.0.
+- `oxlint-tsgolint` is pinned to `7.0.2001`, not `latest`. This is what
+  `bunx @effect/tsgo setup` itself resolves and writes when run against this
+  exact dependency set (`@effect/tsgo@0.36.5` + `oxlint@1.78.0`) — treat it
+  as tied to those versions, not an independent floating pin; re-run
+  `@effect/tsgo setup` and take whatever it resolves if either bumps.
 
 ## Vendored Effect source (`repos/effect`)
 

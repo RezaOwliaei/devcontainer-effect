@@ -9,7 +9,7 @@
 		"@types/bun": "latest",
 		"oxfmt": "latest",
 		"oxlint": "1.78.0",
-		"oxlint-tsgolint": "latest",
+		"oxlint-tsgolint": "7.0.2001",
 		"typescript": "latest"
 	},
 	"dependencies": {
