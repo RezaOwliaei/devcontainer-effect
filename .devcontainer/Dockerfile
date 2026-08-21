@@ -1,19 +1,26 @@
+# THIS BRANCH exists only to demonstrate oven-sh/bun#39972 for maintainers —
+# see REPRO.md. It is not meant to be merged to main: main stays pinned
+# outright (no build-arg) since a project template shouldn't invite
+# accidentally building against a known-bad version. Default here still
+# matches main (1.3.14); pass --build-arg BUN_VERSION=1.4.0 to reproduce.
+ARG BUN_VERSION=1.3.14
+
 # Base: official Bun image, Debian (trixie) variant — has apt-get. Multi-arch
 # manifest: resolves natively to linux/arm64 on Apple Silicon, linux/amd64
 # elsewhere — no --platform override needed. Pinned, not tracking `debian`
-# latest: 1.4.0 was tried unpinned here and reproducibly failed `bun install`
-# on this template's own dependency set with `error: Fail extracting tarball
-# for "effect"` (100% reproducible across repeated fresh-container runs,
-# consistent with Bun's known tarball/integrity-check flakiness under
-# Docker/overlayfs) — 1.3.14 does not have this problem, verified across
-# many fresh-container installs earlier in this template's development.
-# Re-verify before bumping past 1.3.14; don't unpin again for "latest Bun"
-# convenience without re-running that check.
+# latest: 1.4.0 was tried unpinned here and intermittently failed `bun
+# install` on this template's own dependency set with `error: Fail
+# extracting tarball for "effect"` — root-caused via strace to a worker
+# thread removing another package's still-being-extracted temp directory
+# before it's renamed into place (oven-sh/bun#39972, cross-linked from
+# #39716). 1.3.14 does not have this problem, verified across many
+# fresh-container installs. Re-verify before bumping past 1.3.14; don't
+# unpin again for "latest Bun" convenience without re-running that check.
 #
 # This is a genuinely minimal image: it does NOT include ca-certificates,
 # curl, or git by default (verified empirically, don't trust descriptions of
 # it) — all handled explicitly below.
-FROM oven/bun:1.3.14-debian
+FROM oven/bun:${BUN_VERSION}-debian
 
 # node -> bun symlink so anything shelling out to `node` (npm-ecosystem CLIs
 # with a `#!/usr/bin/env node` shebang — oxlint-tsgolint, oxfmt, etc.) works
