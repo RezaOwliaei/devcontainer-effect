@@ -1,19 +1,25 @@
 # Base: official Bun image, Debian (trixie) variant — has apt-get. Multi-arch
 # manifest: resolves natively to linux/arm64 on Apple Silicon, linux/amd64
-# elsewhere — no --platform override needed. Pinned, not tracking `debian`
-# latest: 1.4.0 was tried unpinned here and reproducibly failed `bun install`
-# on this template's own dependency set with `error: Fail extracting tarball
-# for "effect"` (100% reproducible across repeated fresh-container runs,
-# consistent with Bun's known tarball/integrity-check flakiness under
-# Docker/overlayfs) — 1.3.14 does not have this problem, verified across
-# many fresh-container installs earlier in this template's development.
-# Re-verify before bumping past 1.3.14; don't unpin again for "latest Bun"
-# convenience without re-running that check.
+# elsewhere — no --platform override needed. Deliberately unpinned (`debian`,
+# not a version tag): this is a lab template meant to track Bun's latest
+# release, not a reproducible-build target.
+#
+# History: was pinned to 1.3.14 for a while because 1.4.0 intermittently
+# failed `bun install` on this template's dependency set with `error: Fail
+# extracting tarball for "effect"` (~1/17 fresh-container attempts, not
+# consistently reproducible — see oven-sh/bun#39972, root-caused to a
+# streaming-tarball-extraction fault, not anything specific to this
+# project). Unpinned again because the failure rate is low enough to accept
+# and Bun has a fix in flight (oven-sh/bun#39986, open as of writing: retries
+# a failed streaming extraction through a safer buffered path instead of
+# failing outright). If `bun install` starts failing with "Fail extracting
+# tarball" again, that issue/PR pair is the first place to check before
+# re-pinning.
 #
 # This is a genuinely minimal image: it does NOT include ca-certificates,
 # curl, or git by default (verified empirically, don't trust descriptions of
 # it) — all handled explicitly below.
-FROM oven/bun:1.3.14-debian
+FROM oven/bun:debian
 
 # node -> bun symlink so anything shelling out to `node` (npm-ecosystem CLIs
 # with a `#!/usr/bin/env node` shebang — oxlint-tsgolint, oxfmt, etc.) works
