@@ -1,0 +1,44 @@
+{
+	// TypeScriptTeam.native-preview: use tsgo (TS 7, native/Go) instead of
+	// the classic JS-based tsserver. Required because `effect-tsgo patch`
+	// (this project's `prepare` script) replaces node_modules/typescript
+	// with tsgo, which ships no lib/tsserver.js — without this setting, the
+	// editor's TS tooling can't find a server and silently falls back to
+	// its own bundled TypeScript instead of the project's.
+	"js/ts.experimental.useTsgo": true,
+
+	// Points native-preview at the project's own tsgo build rather than a
+	// globally installed one, so the version/config actually used matches
+	// what's pinned in package.json.
+	"js/ts.tsdk.path": "./node_modules/typescript",
+
+	// repos/effect is a vendored (git subtree) copy of Effect's own source,
+	// kept for reference/agent reading only — never imported from, never
+	// edited in place, so it's excluded everywhere the editor would
+	// otherwise index, search, watch, or offer it as an auto-import source.
+	"js/ts.preferences.autoImportFileExcludePatterns": ["repos/**"],
+	"files.exclude": {
+		"repos/**": true
+	},
+	"files.watcherExclude": {
+		"repos/**": true
+	},
+	"search.exclude": {
+		"repos/**": true
+	},
+
+	"oxc.configPath": ".oxlintrc.json",
+	"oxc.typeAware": true,
+	"editor.defaultFormatter": "oxc.oxc-vscode",
+	"editor.formatOnSave": false,
+	"editor.codeActionsOnSave": {
+		"source.format.oxc": "always",
+		"source.fixAll.oxc": "always"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
+	"[javascript]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	}
+}

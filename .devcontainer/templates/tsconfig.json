@@ -1,0 +1,62 @@
+{
+	"$schema": "./node_modules/@effect/tsgo/schema.json",
+	"exclude": ["repos/**"],
+	"compilerOptions": {
+		// Environment setup & latest features
+		"lib": ["ESNext"],
+		"target": "ESNext",
+		"module": "Preserve",
+		"moduleDetection": "force",
+		"jsx": "react-jsx",
+		"allowJs": true,
+		// Bundler mode
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"noEmit": true,
+		// Best practices
+		"strict": true,
+		"skipLibCheck": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		// Some stricter flags (disabled by default)
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"noPropertyAccessFromIndexSignature": false,
+		// Bun Types
+		"types": ["bun"],
+		// Required for Effect
+		"exactOptionalPropertyTypes": true,
+		// Ts Config Plugins - Required for Effect Dev
+		"plugins": [
+			{
+				"name": "@effect/language-service",
+				"diagnosticSeverity": {
+					"abortControllerInEffect": "warning",
+					"asyncFunction": "warning",
+					"cryptoRandomUUID": "warning",
+					"cryptoRandomUUIDInEffect": "warning",
+					"extendsNativeError": "warning",
+					"globalConsole": "warning",
+					"globalConsoleInEffect": "warning",
+					"globalDate": "warning",
+					"globalDateInEffect": "warning",
+					"globalFetch": "warning",
+					"globalFetchInEffect": "warning",
+					"globalRandom": "warning",
+					"globalRandomInEffect": "warning",
+					"globalTimers": "warning",
+					"globalTimersInEffect": "warning",
+					"instanceOfSchema": "warning",
+					"newPromise": "warning",
+					"nodeBuiltinImport": "warning",
+					"preferSchemaOverJson": "warning",
+					"processEnv": "warning",
+					"processEnvInEffect": "warning",
+					"unsafeEffectTypeAssertion": "warning"
+				}
+			}
+		]
+	}
+}

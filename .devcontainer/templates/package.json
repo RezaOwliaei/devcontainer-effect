@@ -1,0 +1,23 @@
+{
+	"name": "__PROJECT_NAME__",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"devDependencies": {
+		"@effect/language-service": "latest",
+		"@effect/tsgo": "latest",
+		"@types/bun": "latest",
+		"oxfmt": "latest",
+		"oxlint": "1.78.0",
+		"oxlint-tsgolint": "latest",
+		"typescript": "latest"
+	},
+	"dependencies": {
+		"@effect/experimental": "latest",
+		"effect": "rc"
+	},
+	"scripts": {
+		"prepare": "effect-tsgo patch --typescript --oxlint && printf '#!/usr/bin/env sh\\nexec bun \"$@\"\\n' > node_modules/.bin/node && chmod +x node_modules/.bin/node",
+		"lint": "oxlint --config .oxlintrc.json"
+	}
+}
