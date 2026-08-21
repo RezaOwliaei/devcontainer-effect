@@ -32,15 +32,14 @@ fi
 # subtree's merge commit to.
 [ -d .git ] || git init -q
 
-# `git commit` needs an identity, and none is guaranteed to exist. Prefers
-# HOST_GIT_NAME/HOST_GIT_EMAIL (see devcontainer.json's containerEnv — set
-# from your host's real git config via a one-time shell export, so this
-# reflects your actual identity, not a frozen copy); falls back to a
-# repo-local (not --global) placeholder only when neither the env vars nor
-# an existing git config are present, so a real identity — env var, global,
-# or already-local — is never overwritten.
-git config user.email >/dev/null 2>&1 || git config user.email "${HOST_GIT_EMAIL:-bun@localhost}"
-git config user.name >/dev/null 2>&1 || git config user.name "${HOST_GIT_NAME:-Dev Container}"
+# A fresh container has no ~/.gitconfig at all — nothing mounts one in — so
+# `git commit` below fails with "unknown author identity" without this.
+# HOST_GIT_NAME/HOST_GIT_EMAIL come from devcontainer.json's containerEnv
+# (passed through from the host, when set there); fall back to a generic
+# identity otherwise so this never blocks the scaffold on a host that hasn't
+# set them.
+git config user.email >/dev/null 2>&1 || git config user.email "${HOST_GIT_EMAIL:-devcontainer@localhost}"
+git config user.name >/dev/null 2>&1 || git config user.name "${HOST_GIT_NAME:-devcontainer}"
 
 if ! git rev-parse HEAD >/dev/null 2>&1; then
 	git add -A
