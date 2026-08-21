@@ -31,6 +31,21 @@
 		"source=bun-install-cache,target=/home/bun/.bun/install/cache,type=volume"
 	],
 
+	// Passes your host git identity in as plain env vars rather than baking
+	// it into the Dockerfile (which would freeze a stale copy in a file
+	// meant to be a generic template) or bind-mounting ~/.gitconfig (which
+	// hard-fails container creation if that file doesn't exist on the
+	// host). ${localEnv:...} resolves to an empty string when the host var
+	// isn't set — never a build/creation failure — so scaffold.sh's
+	// fallback identity still covers hosts that never set these. Requires
+	// a one-time host-side export, e.g. in ~/.zshrc:
+	//   export HOST_GIT_NAME="$(git config --global user.name)"
+	//   export HOST_GIT_EMAIL="$(git config --global user.email)"
+	"containerEnv": {
+		"HOST_GIT_NAME": "${localEnv:HOST_GIT_NAME}",
+		"HOST_GIT_EMAIL": "${localEnv:HOST_GIT_EMAIL}"
+	},
+
 	// Full auto-scaffold, not just `bun init -y`: on a brand-new project
 	// (package.json missing) this writes package.json (Effect/tsgo/oxlint
 	// deps pinned to their "latest"/"rc" dist-tags), tsconfig.json,

@@ -31,7 +31,9 @@ automatically the first time `postCreateCommand` runs (`.devcontainer/scaffold.s
 - `repos/effect`: Effect's own source, vendored via `git subtree`, for
   coding agents to read as reference (see "Vendored Effect source" below).
   Runs `git init` + an initial commit first if the project isn't a git repo
-  yet — `git subtree` needs a HEAD to attach its merge commit to.
+  yet — `git subtree` needs a HEAD to attach its merge commit to. See "Git
+  identity for scaffold commits" below for who that commit (and the
+  subtree's) ends up authored as.
 - `bun install` (which runs the `prepare` script, patching `typescript` →
   tsgo, `oxlint` → its tsgo-compatible build, etc.)
 
@@ -39,6 +41,34 @@ Every step checks before writing, so re-running this on container rebuild
 (or opening an already-scaffolded project) is a no-op past `bun install`.
 The first container creation is slower than a rebuild, since it clones the
 Effect repo — don't be alarmed if `postCreateCommand` takes a minute or two.
+
+## Git identity for scaffold commits
+
+`scaffold.sh` runs `git init` + an initial commit (and the `repos/effect`
+subtree adds two more) on a fresh project, which needs a git identity —
+and none is guaranteed to exist inside the container. VS Code's Dev
+Containers extension copies your host `~/.gitconfig` in by default, but
+that's VS Code-specific behavior, not something this template controls, so
+it doesn't cover the `devcontainer` CLI, CI, or a host with
+`copyGitConfig` off. Bind-mounting `~/.gitconfig` directly was considered
+and rejected — it hard-fails container *creation* if that file doesn't
+exist on the host, which is worse than the problem it solves.
+
+Instead, `devcontainer.json` passes your identity in as plain env vars
+(`containerEnv`), read from your host shell environment via
+`${localEnv:...}` — which resolves to an empty string, not an error, when
+unset. Add this once to `~/.zshrc` (or equivalent), then open a new
+terminal or `source` it:
+
+```bash
+export HOST_GIT_NAME="$(git config --global user.name)"
+export HOST_GIT_EMAIL="$(git config --global user.email)"
+```
+
+`scaffold.sh` uses these if present; if they're unset (or you skip this
+step entirely), it falls back to a repo-local — never `--global` — identity
+(`Dev Container <bun@localhost>`), so the scaffold commit never fails, it
+just won't be attributed to you.
 
 ## Package versions
 
