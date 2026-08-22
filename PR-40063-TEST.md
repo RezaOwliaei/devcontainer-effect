@@ -49,3 +49,35 @@ racing a full Effect repo clone against a real install), then check
   `bun-output.log` — the retried `ConnectionClosed` warning, or the new
   detailed `Fail extracting tarball ...: <reason> (at byte N of M)` error.
 - If useful, the matching `strace.log` for correlation, same as before.
+
+## Result — attempt 1 of 20, run on 2026-08-22
+
+Ran through the real Dev Container `postCreateCommand` flow (built from
+this branch's actual committed `Dockerfile`/`scaffold.sh` via a clean
+`git archive` checkout — not a hand-typed reproduction), as the non-root
+`bun` user, with the `SYS_PTRACE`/seccomp `runArgs` from `devcontainer.json`.
+
+`bunx bun-pr 40063` fetched cleanly (`bun-40063` resolved to
+`/home/bun/.local/bin/bun-bee9b75c...-pr40063` via the `BUN_OUT_DIR` fix,
+already on `PATH`). Attempt 1 hit Jarred's first predicted outcome on the
+very first try — no need to exhaust all 20:
+
+```
+warn: ConnectionClosed downloading tarball @effect/tsgo-linux-arm64@0.36.5. Retrying 1/5...
+
+warn: ConnectionClosed downloading tarball effect@4.0.0-rc.111. Retrying 1/5...
+```
+
+Both retries succeeded; the install still completed cleanly (`33 packages
+installed [370.29s]`). Exact match to the format he named. No
+`Fail extracting tarball ...` error appeared anywhere in the verbose log.
+
+Notably, the background pressure job (the concurrent unsquashed
+`Effect-TS/effect` clone) died with `fatal: early EOF` /
+`RPC failed; curl 92 HTTP/2 stream ... CANCEL` during this same attempt —
+the same class of connection-drop symptom, on a different protocol
+(git smart-HTTP vs. bun's own npm tarball fetch), happening concurrently.
+
+Full logs committed at `strace-logs/pr40063-attempt-1-1787405944.*`
+(`bun-output.log` is the verbose install output; `strace.log.gz` is the
+gzipped syscall trace, 29MB).
