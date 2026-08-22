@@ -67,8 +67,11 @@ BUN_CACHE="$HOME/.bun/install/cache"
 
 for i in $(seq 1 "$ATTEMPTS"); do
 	echo "=== attempt $i/$ATTEMPTS ==="
-	rm -rf repos/effect node_modules "$BUN_CACHE"
-	mkdir -p "$BUN_CACHE"
+	rm -rf repos/effect node_modules
+	# $BUN_CACHE is a mount point (the bun-install-cache named volume) — rm
+	# -rf on the directory itself fails with "Device or resource busy"; only
+	# its contents can be removed.
+	find "$BUN_CACHE" -mindepth 1 -delete
 
 	git clone --no-single-branch -q https://github.com/Effect-TS/effect.git repos/effect &
 	pressure_pid=$!
