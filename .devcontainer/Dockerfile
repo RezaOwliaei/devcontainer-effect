@@ -95,15 +95,32 @@ RUN usermod --shell /bin/bash bun
 # Scoped to /workspaces rather than "*" so it doesn't blanket-trust every path.
 RUN git config --system --add safe.directory '/workspaces/*'
 
-# Pre-create the bun install cache dir, owned by bun, BEFORE the named
-# volume mount happens (that's controlled by devcontainer.json, at container
-# creation time, not build time — but Docker seeds a fresh named volume's
-# ownership/contents from whatever already exists at that path in the
-# image). Skipping this step is what causes
-# "bun is unable to write files to tempdir: AccessDenied": an unmounted path
-# with no prior image content gets created as root:root when the volume
-# first mounts, and the bun user (uid 1000) can't write into it.
-RUN mkdir -p /home/bun/.bun/install/cache && chown -R bun:bun /home/bun/.bun
+# Pre-create the bun install cache dir and the Claude Code config dir,
+# owned by bun, BEFORE their named volume mounts happen (those are
+# controlled by devcontainer.json, at container creation time, not build
+# time — but Docker seeds a fresh named volume's ownership/contents from
+# whatever already exists at that path in the image). Skipping this is
+# what causes "bun is unable to write files to tempdir: AccessDenied" for
+# the Bun cache, and the equivalent for Claude Code's ~/.claude: an
+# unmounted path with no prior image content gets created as root:root
+# when the volume first mounts, and the bun user (uid 1000) can't write
+# into it.
+RUN mkdir -p /home/bun/.bun/install/cache /home/bun/.claude \
+    && chown -R bun:bun /home/bun/.bun /home/bun/.claude
+
+# Claude Code CLI: native installer, not npm (this image ships no real
+# Node.js/npm, only the node -> bun compat symlink above). Run via `su -
+# bun` while still root so HOME resolves to /home/bun and the installed
+# files (~/.local/bin/claude, ~/.local/share/claude/versions/) end up
+# owned by bun, not root. Then symlinked into /usr/local/bin (root-owned,
+# so this has to happen before USER bun below) rather than added to PATH,
+# for the same reason as the node -> bun symlink above: a Docker ENV PATH
+# addition is silently dropped by Debian's /etc/profile for login shells.
+# The native installer self-updates in the background independent of this
+# image layer, so a session always runs the latest Claude Code regardless
+# of when the container was last rebuilt.
+RUN su - bun -c "curl -fsSL https://claude.ai/install.sh | bash" \
+    && ln -s /home/bun/.local/bin/claude /usr/local/bin/claude
 
 # Run as the image's built-in non-root `bun` user (uid 1000/gid 1000) rather
 # than root, per Dev Container convention. The base image creates this user

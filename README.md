@@ -42,6 +42,11 @@ Every step checks before writing, so re-running this on container rebuild
 The first container creation is slower than a rebuild, since it clones the
 Effect repo — don't be alarmed if `postCreateCommand` takes a minute or two.
 
+The Claude Code CLI is already installed in the image (see "Claude Code CLI"
+below) — open a terminal in the container and run `claude` to sign in. Auth
+persists across rebuilds via a per-project named volume, so you only sign in
+once per project.
+
 ## Git identity for scaffold commits
 
 `scaffold.sh` runs `git init` + an initial commit (and the `repos/effect`
@@ -127,6 +132,26 @@ Effect project:
   `effect.instrumentation.injectNodeOptions`,
   `effect.instrumentation.injectDebugConfigurations`) are debug-tuning
   knobs with working defaults.
+- `anthropic.claude-code`: VS Code panel for the Claude Code CLI installed
+  in the Dockerfile (see "Claude Code CLI" below).
+
+## Claude Code CLI
+
+Installed via the [native installer](https://claude.ai/install.sh), not
+`npm install -g` — this base image (`oven/bun:debian`) has no real
+Node.js/npm, only the `node -> bun` compat symlink described above under
+"CLI tools". The installer drops a self-updating binary at
+`~/.local/bin/claude`, symlinked to `/usr/local/bin/claude` (same pattern
+as the `fd`/`node` symlinks: a Docker `ENV PATH` addition is silently
+dropped by Debian's `/etc/profile` for login shells, so symlinking into an
+already-on-PATH directory is what actually works in every shell invocation
+mode).
+
+Run `claude` in the integrated terminal to sign in the first time. Auth,
+settings, and session history persist across container rebuilds via a
+named volume mounted at `~/.claude` and keyed by `${devcontainerId}`, so
+each project gets its own — see `devcontainer.json`'s `mounts` and
+`containerEnv.CLAUDE_CONFIG_DIR`.
 
 ## CLI tools
 

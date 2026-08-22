@@ -27,8 +27,17 @@
 	// survives rebuilds and is shared across every project built from this
 	// base image, so the first `bun install` in a *second* project is
 	// already warm.
+	//
+	// Second volume for Claude Code's config/auth (~/.claude, keyed by
+	// CLAUDE_CONFIG_DIR below). Unlike the Bun cache, this one is keyed by
+	// ${devcontainerId} — a stable per-container-config id VS Code
+	// provides — so it's NOT shared across projects: each project gets its
+	// own Claude session/auth/settings, and one project's volume never
+	// leaks into another's. Without this mount, signing in to Claude Code
+	// wouldn't survive a container rebuild.
 	"mounts": [
-		"source=bun-install-cache,target=/home/bun/.bun/install/cache,type=volume"
+		"source=bun-install-cache,target=/home/bun/.bun/install/cache,type=volume",
+		"source=claude-code-config-${devcontainerId},target=/home/bun/.claude,type=volume"
 	],
 
 	// Passes your host git identity in as plain env vars rather than baking
@@ -41,9 +50,17 @@
 	// a one-time host-side export, e.g. in ~/.zshrc:
 	//   export HOST_GIT_NAME="$(git config --global user.name)"
 	//   export HOST_GIT_EMAIL="$(git config --global user.email)"
+	//
+	// CLAUDE_CONFIG_DIR redirects Claude Code's config dir to the mounted
+	// volume above. Claude Code also keeps a second file, ~/.claude.json
+	// (OAuth account, personal MCP servers, per-project trust), OUTSIDE
+	// ~/.claude by default — without this var, that file would still land
+	// in the disposable container layer and get lost on rebuild even with
+	// the volume mounted.
 	"containerEnv": {
 		"HOST_GIT_NAME": "${localEnv:HOST_GIT_NAME}",
-		"HOST_GIT_EMAIL": "${localEnv:HOST_GIT_EMAIL}"
+		"HOST_GIT_EMAIL": "${localEnv:HOST_GIT_EMAIL}",
+		"CLAUDE_CONFIG_DIR": "/home/bun/.claude"
 	},
 
 	// Full auto-scaffold, not just `bun init -y`: on a brand-new project
@@ -62,7 +79,7 @@
 		"vscode": {
 			// These are baked in rather than left for each project to opt
 			// into — every project built from this template is an Effect
-			// project, so all four are always wanted:
+			// project, so all five are always wanted:
 			// - oven.bun-vscode: Bun runtime support
 			// - oxc.oxc-vscode: oxlint/oxfmt integration (this template's
 			//   projects use oxlint, not eslint/prettier)
@@ -77,11 +94,16 @@
 			//   contributed settings (effect.devServer.port,
 			//   effect.metrics.pollInterval, etc.) are debug-tuning knobs with
 			//   working defaults.
+			// - anthropic.claude-code: VS Code panel for the Claude Code CLI
+			//   installed in the Dockerfile. Shares the same ~/.claude config
+			//   (see CLAUDE_CONFIG_DIR above) as running `claude` directly in
+			//   the integrated terminal — either works.
 			"extensions": [
 				"oven.bun-vscode",
 				"oxc.oxc-vscode",
 				"TypeScriptTeam.native-preview",
-				"effectful-tech.effect-vscode"
+				"effectful-tech.effect-vscode",
+				"anthropic.claude-code"
 			]
 			// No "settings" block: .vscode/settings.json is bind-mounted and
 			// wins over customizations.vscode.settings, so it's the one
