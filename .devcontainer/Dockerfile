@@ -1,7 +1,9 @@
-# THIS BRANCH exists only to hunt oven-sh/bun#39972 under strace for the
-# maintainers — see STRACE-REPRO.md. Not meant to be merged to main: hard
-# pins 1.4.0 (the known-bad version) on purpose, with no build-arg toggle,
-# since the whole branch has exactly one job.
+# THIS BRANCH exists only to run oven-sh/bun#40063's PR build against the
+# oven-sh/bun#39972 flake for the maintainers — see PR-40063-TEST.md (and
+# STRACE-REPRO.md, this branch's parent, for the original strace hunt).
+# Not meant to be merged to main: hard pins 1.4.0 (the known-bad version,
+# and the base `bunx` needs to fetch the PR-40063 binary) on purpose, with
+# no build-arg toggle, since the whole branch has exactly one job.
 #
 # Base: official Bun image, Debian (trixie) variant — has apt-get. Multi-arch
 # manifest: resolves natively to linux/arm64 on Apple Silicon, linux/amd64

@@ -46,20 +46,40 @@ if ! git rev-parse HEAD >/dev/null 2>&1; then
 	git commit -q -m "chore: scaffold Effect dev container project"
 fi
 
-# --- oven-sh/bun#39972 repro instrumentation (THIS BRANCH ONLY, not for
-# merge to main) ---
+# --- oven-sh/bun#40063 PR-build test (THIS BRANCH ONLY, not for merge to
+# main) ---
 #
-# Loops clean-state -> concurrent-network-pressure -> strace'd `bun install`
-# up to $ATTEMPTS times, stopping at the first failure so its logs survive.
+# Jarred-Sumner asked (oven-sh/bun#39972) for the #40063 PR build to be run
+# on this exact setup, since he couldn't reproduce the extractor mishandling
+# a complete body on Linux x64 despite ~1,250 chaos-tested installs, but
+# this OrbStack setup hits the flake ~1/6-1/17. Fetches the PR's CI-built
+# binary once (same command he gave: `bunx bun-pr 40063`), then reuses the
+# same clean-state -> concurrent-network-pressure -> strace loop from the
+# #39972 hunt (see bun-1.4.0-strace-repro, this branch's parent) against
+# that binary instead of the stock `bun install`. `--verbose` per his
+# request, so a silently-retried `ConnectionClosed` shows up in the log
+# instead of being invisible.
+#
 # Pressure source: a full, un-cached `git clone --no-single-branch` of
-# Effect-TS/effect run in the background concurrently with `bun install`, so
+# Effect-TS/effect run in the background concurrently with the install, so
 # both contend for the same limited bandwidth during the tarball-download
-# window — simulating the poor-connection conditions suspected of triggering
-# #39972. Deliberately a plain `git clone` here, not `git subtree add`: same
+# window. Deliberately a plain `git clone` here, not `git subtree add`: same
 # network profile, but it never touches this repo's own .git index/HEAD,
 # which matters because this job gets killed between attempts — killing a
 # real `git subtree add` mid-merge would risk corrupting this scaffold
 # repo's git state across up to 20 iterations.
+# By default bun-pr installs next to the resolved `bun` binary
+# (/usr/local/bin, root-owned in this image) — fails with "Permission
+# denied" as the non-root bun user this container actually runs as.
+# BUN_OUT_DIR overrides that; verified locally that bun-pr honors it. Put
+# it on PATH too so `bun-40063` resolves bare, same as Jarred's example.
+# Also verified locally: the tool needs `unzip` (present in this image)
+# and fails outright without it.
+export BUN_OUT_DIR="$HOME/.local/bin"
+mkdir -p "$BUN_OUT_DIR"
+export PATH="$BUN_OUT_DIR:$PATH"
+bunx bun-pr 40063
+
 ATTEMPTS=20
 LOGDIR="strace-logs"
 mkdir -p "$LOGDIR"
@@ -77,19 +97,18 @@ for i in $(seq 1 "$ATTEMPTS"); do
 	pressure_pid=$!
 
 	ts=$(date +%s)
-	strace_log="$LOGDIR/attempt-$i-$ts.strace.log"
-	bun_log="$LOGDIR/attempt-$i-$ts.bun-output.log"
+	strace_log="$LOGDIR/pr40063-attempt-$i-$ts.strace.log"
+	bun_log="$LOGDIR/pr40063-attempt-$i-$ts.bun-output.log"
 
-	# strace's own filter here is deliberately broader than the original
-	# issue's filesystem-only trace (mkdirat/rename/unlink...): `network`
-	# covers connect/send*/recv*/socket lifecycle, to test the
-	# connection-drop theory from #40063, not just the older directory-race
-	# theory. -yy resolves fds to paths/socket info; -s 256 avoids
-	# truncating buffer previews to strace's 32-byte default.
+	# Same broadened filter as the #39972 hunt: `network` covers
+	# connect/send*/recv*/socket lifecycle, to see whether a
+	# ConnectionClosed-style event correlates with a failure this time.
+	# -yy resolves fds to paths/socket info; -s 256 avoids truncating
+	# buffer previews to strace's 32-byte default.
 	set +e
 	strace -f -tt -yy -s 256 \
 		-e trace=network,read,write,close,openat,unlinkat,renameat,renameat2 \
-		-o "$strace_log" -- bun install >"$bun_log" 2>&1
+		-o "$strace_log" -- bun-40063 install --verbose >"$bun_log" 2>&1
 	bun_status=$?
 	set -e
 
