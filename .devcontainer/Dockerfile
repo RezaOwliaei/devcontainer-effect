@@ -1,25 +1,16 @@
+# THIS BRANCH exists only to hunt oven-sh/bun#39972 under strace for the
+# maintainers — see STRACE-REPRO.md. Not meant to be merged to main: hard
+# pins 1.4.0 (the known-bad version) on purpose, with no build-arg toggle,
+# since the whole branch has exactly one job.
+#
 # Base: official Bun image, Debian (trixie) variant — has apt-get. Multi-arch
 # manifest: resolves natively to linux/arm64 on Apple Silicon, linux/amd64
-# elsewhere — no --platform override needed. Deliberately unpinned (`debian`,
-# not a version tag): this is a lab template meant to track Bun's latest
-# release, not a reproducible-build target.
-#
-# History: was pinned to 1.3.14 for a while because 1.4.0 intermittently
-# failed `bun install` on this template's dependency set with `error: Fail
-# extracting tarball for "effect"` (~1/17 fresh-container attempts, not
-# consistently reproducible — see oven-sh/bun#39972, root-caused to a
-# streaming-tarball-extraction fault, not anything specific to this
-# project). Unpinned again because the failure rate is low enough to accept
-# and Bun has a fix in flight (oven-sh/bun#39986, open as of writing: retries
-# a failed streaming extraction through a safer buffered path instead of
-# failing outright). If `bun install` starts failing with "Fail extracting
-# tarball" again, that issue/PR pair is the first place to check before
-# re-pinning.
+# elsewhere — no --platform override needed.
 #
 # This is a genuinely minimal image: it does NOT include ca-certificates,
 # curl, or git by default (verified empirically, don't trust descriptions of
 # it) — all handled explicitly below.
-FROM oven/bun:debian
+FROM oven/bun:1.4.0-debian
 
 # node -> bun symlink so anything shelling out to `node` (npm-ecosystem CLIs
 # with a `#!/usr/bin/env node` shebang — oxlint-tsgolint, oxfmt, etc.) works
@@ -47,10 +38,14 @@ RUN ln -s /usr/local/bin/bun /usr/local/bin/node
 # ripgrep/fd-find/fzf/tree: fast search and navigation.
 # vim/htop: terminal editor and process viewer.
 # unzip/zip: archive handling — no zip support at all otherwise.
+# strace: THIS BRANCH ONLY — syscall/network tracing for the #39972 hunt in
+# scaffold.sh. Needs SYS_PTRACE + a permissive seccomp profile at container
+# runtime too (see devcontainer.json), or it fails with "Operation not
+# permitted" even as a non-root user tracing its own child.
 RUN apt-get update -qq \
     && apt-get install -qq --no-install-recommends -y \
         git ca-certificates bash-completion locales \
-        curl wget jq ripgrep fd-find fzf tree vim htop unzip zip \
+        curl wget jq ripgrep fd-find fzf tree vim htop unzip zip strace \
     && update-ca-certificates \
     && sed -i '/en_US.UTF-8/s/^# //' /etc/locale.gen \
     && locale-gen \

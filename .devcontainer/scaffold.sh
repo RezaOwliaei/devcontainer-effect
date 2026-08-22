@@ -46,11 +46,59 @@ if ! git rev-parse HEAD >/dev/null 2>&1; then
 	git commit -q -m "chore: scaffold Effect dev container project"
 fi
 
-# Vendor Effect's own source for agent reference (see AGENTS.md) — this is
-# a real network fetch of the Effect repo, so first container creation is
-# slower than a later rebuild once repos/effect already exists.
-if [ ! -d repos/effect ]; then
-	git subtree add --prefix=repos/effect https://github.com/Effect-TS/effect.git main --squash
-fi
+# --- oven-sh/bun#39972 repro instrumentation (THIS BRANCH ONLY, not for
+# merge to main) ---
+#
+# Loops clean-state -> concurrent-network-pressure -> strace'd `bun install`
+# up to $ATTEMPTS times, stopping at the first failure so its logs survive.
+# Pressure source: a full, un-cached `git clone --no-single-branch` of
+# Effect-TS/effect run in the background concurrently with `bun install`, so
+# both contend for the same limited bandwidth during the tarball-download
+# window — simulating the poor-connection conditions suspected of triggering
+# #39972. Deliberately a plain `git clone` here, not `git subtree add`: same
+# network profile, but it never touches this repo's own .git index/HEAD,
+# which matters because this job gets killed between attempts — killing a
+# real `git subtree add` mid-merge would risk corrupting this scaffold
+# repo's git state across up to 20 iterations.
+ATTEMPTS=20
+LOGDIR="strace-logs"
+mkdir -p "$LOGDIR"
+BUN_CACHE="$HOME/.bun/install/cache"
 
-bun install
+for i in $(seq 1 "$ATTEMPTS"); do
+	echo "=== attempt $i/$ATTEMPTS ==="
+	rm -rf repos/effect node_modules "$BUN_CACHE"
+	mkdir -p "$BUN_CACHE"
+
+	git clone --no-single-branch -q https://github.com/Effect-TS/effect.git repos/effect &
+	pressure_pid=$!
+
+	ts=$(date +%s)
+	strace_log="$LOGDIR/attempt-$i-$ts.strace.log"
+	bun_log="$LOGDIR/attempt-$i-$ts.bun-output.log"
+
+	# strace's own filter here is deliberately broader than the original
+	# issue's filesystem-only trace (mkdirat/rename/unlink...): `network`
+	# covers connect/send*/recv*/socket lifecycle, to test the
+	# connection-drop theory from #40063, not just the older directory-race
+	# theory. -yy resolves fds to paths/socket info; -s 256 avoids
+	# truncating buffer previews to strace's 32-byte default.
+	set +e
+	strace -f -tt -yy -s 256 \
+		-e trace=network,read,write,close,openat,unlinkat,renameat,renameat2 \
+		-o "$strace_log" -- bun install >"$bun_log" 2>&1
+	bun_status=$?
+	set -e
+
+	kill "$pressure_pid" 2>/dev/null || true
+	wait "$pressure_pid" 2>/dev/null || true
+
+	if [ "$bun_status" -ne 0 ]; then
+		echo "!!! REPRODUCED on attempt $i/$ATTEMPTS !!!"
+		echo "syscall trace: $strace_log"
+		echo "bun output:    $bun_log"
+		exit "$bun_status"
+	fi
+done
+
+echo "did not reproduce in $ATTEMPTS attempts"
