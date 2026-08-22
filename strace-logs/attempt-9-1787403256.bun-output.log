@@ -1,0 +1,3 @@
+bun install v1.4.0 (34cbb9a40)
+error: Fail extracting tarball for "@effect/tsgo-linux-arm64"
+error: Fail extracting tarball from @effect/tsgo-linux-arm64
